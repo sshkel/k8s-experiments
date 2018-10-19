@@ -1,0 +1,102 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: h2o-workflow
+spec:
+  entrypoint: train
+  onExit: destroy-h2o-cluster
+  templates:
+  - name: train
+    steps:
+      - - name: start-h2o-cluster
+          template: start-h2o-cluster
+      - - name: curl-h2o
+          template: curl-h2o
+
+  - name: pod-name
+    container:
+      image: alpine:latest
+      command: [sh,-c]
+      args: ["echo job name was : {{workflow.name}}"]
+
+  - name: curl-h2o
+    inputs:
+      artifacts:
+      - name: argo-source
+        path: /src
+        git:
+          repo: https://github.com/argoproj/argo.git
+          revision: "v2.1.1"
+    container:
+      image: golang:1.10
+      command: [sh, -c]
+      args: ["echo {{workflow.name}} && curl -v {{workflow.name}}:54321"]
+      workingDir: /src
+
+  - name: start-h2o-cluster
+    daemon: True
+    resource:
+      action: create
+      manifest: &h2o |
+        apiVersion: v1
+        items:
+        - apiVersion: apps/v1beta1
+          kind: StatefulSet
+          metadata:
+            name: h2o
+          spec:
+            podManagementPolicy: OrderedReady
+            replicas: 1
+            serviceName: '{{workflow.name}}'
+            selector:
+              matchLabels:
+                app: h2o
+            template:
+              metadata:
+                labels:
+                  app: h2o
+                  component: ml
+              spec:
+                containers:
+                  - name: h2o
+                    image: docker.io/gerardaus/h2o:3.20.0.9-4
+                    env:
+                    - name: H2O_MEMORY
+                      value: 1G
+                    ports:
+                    - containerPort: 54321
+                      name: http
+                    resources:
+                      limits:
+                        cpu: '0.2'
+                        memory: 1G
+                      requests:
+                        cpu: '0.2'
+                        memory: 1G
+            updateStrategy:
+              type: RollingUpdate
+        - apiVersion: v1
+          kind: Service
+          metadata:
+            labels:
+              app: h2o
+              component: ml
+            name: '{{workflow.name}}'
+          spec:
+            # NOTE: incorrect SRV records will be given to pod names if clusterIP is not set to None
+            # https://github.com/kubernetes/kubernetes/issues/45779
+            #clusterIP: None
+            sessionAffinity: ClientIP
+            ports:
+            - name: http
+              port: 54321
+              protocol: TCP
+              targetPort: 54321
+            selector:
+              app: h2o
+        kind: List
+
+  - name: destroy-h2o-cluster
+    resource:
+      action: delete
+      manifest: *h2o
