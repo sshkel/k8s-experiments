@@ -10,27 +10,29 @@ spec:
     steps:
       - - name: start-h2o-cluster
           template: start-h2o-cluster
-      - - name: curl-h2o
-          template: curl-h2o
+      - - name: wait-for-h2o
+          template: wait-for-h2o
+      - - name: train-h2o
+          template: train-h2o
 
-  - name: pod-name
+  - name: wait-for-h2o
     container:
-      image: alpine:latest
-      command: [sh,-c]
-      args: ["echo job name was : {{workflow.name}}"]
+    container:
+      image: appropriate/curl
+      command: [sh, -c]
+      args: ["until `curl -G '{{workflow.name}}:54321' >& /tmp/out`; do echo sleep && sleep 1; done && cat /tmp/out"]
 
-  - name: curl-h2o
+  - name: train-h2o
     inputs:
       artifacts:
       - name: argo-source
         path: /src
         git:
-          repo: https://github.com/argoproj/argo.git
-          revision: "v2.1.1"
+          repo: https://github.com/sshkel/k8s-experiments.git
     container:
-      image: golang:1.10
+      image: quay.io/sshkel/h2o:3.20.0.10
       command: [sh, -c]
-      args: ["echo {{workflow.name}} && curl -v {{workflow.name}}:54321"]
+      args: ["echo {{workflow.name}} && python3 h2o_test.py {{workflow.name}}"]
       workingDir: /src
 
   - name: start-h2o-cluster
@@ -59,7 +61,7 @@ spec:
               spec:
                 containers:
                   - name: h2o
-                    image: docker.io/gerardaus/h2o:3.20.0.9-4
+                    image: quay.io/sshkel/h2o:3.20.0.10
                     env:
                     - name: H2O_MEMORY
                       value: 1G
