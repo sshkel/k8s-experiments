@@ -87,7 +87,7 @@ spec:
           spec:
             # NOTE: incorrect SRV records will be given to pod names if clusterIP is not set to None
             # https://github.com/kubernetes/kubernetes/issues/45779
-            #clusterIP: None
+            clusterIP: None
             sessionAffinity: ClientIP
             ports:
             - name: http
