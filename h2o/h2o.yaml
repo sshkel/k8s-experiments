@@ -31,7 +31,7 @@ spec:
     container:
       image: quay.io/sshkel/h2o:3.20.0.10
       command: [sh, -c]
-      args: ["echo {{workflow.name}} && python3 h2o_test.py {{workflow.name}}"]
+      args: ["echo {{workflow.name}} && python3 h2o/LendingClubTraining.py {{workflow.name}}"]
       workingDir: /src
 
   - name: start-h2o-cluster

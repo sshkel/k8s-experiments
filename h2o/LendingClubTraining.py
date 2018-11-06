@@ -22,7 +22,8 @@
 
 
 import h2o
-h2o.init()
+import sys
+h2o.init(url=f"http://{sys.argv[1]}:54321")
 
 
 # # Step 2 (of 8). Import data
