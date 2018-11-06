@@ -1,0 +1,27 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: spark-workflow-
+spec:
+  entrypoint: run-spark
+  templates:
+  - name: run-spark
+    steps:
+      - - name: run-spark
+          template: spark-starter
+  - name: spark-starter
+    container:
+      image: gcr.io/cloud-solutions-images/spark:v2.3.0
+      command: [sh, -c]
+      args: ["
+      /opt/spark/bin/spark-submit 
+      --master k8s://https://10.0.0.1:443
+      --deploy-mode cluster 
+      --name pispark 
+      --conf spark.executor.instances=2 
+      --conf spark.kubernetes.container.image=gcr.io/cloud-solutions-images/spark:v2.3.0  
+      --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark-sa 
+      --conf spark.kubernetes.namespace=spark
+      --class org.apache.spark.examples.SparkPi local:///opt/spark/examples/jars/spark-examples_2.11-2.3.0.jar
+      "]
