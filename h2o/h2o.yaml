@@ -17,7 +17,6 @@ spec:
 
   - name: wait-for-h2o
     container:
-    container:
       image: appropriate/curl
       command: [sh, -c]
       args: ["until `curl -G '{{workflow.name}}:54321' >& /tmp/out`; do echo sleep && sleep 1; done && cat /tmp/out"]
